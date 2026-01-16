@@ -10,7 +10,7 @@ from datetime import datetime
 DEVELOPER_NAME = "SHAMSUDEEN ABDULLA"
 # ─────────────────────────────────────────────────────────────────────────────
 
-# --- NEW DATA LOGGING INITIALIZATION ---
+# --- ഡാറ്റ ശേഖരിക്കാനുള്ള സെഷൻ സ്റ്റേറ്റ് ---
 if 'user_data_log' not in st.session_state:
     st.session_state.user_data_log = []
 
@@ -312,32 +312,39 @@ def main():
         if theme_toggle != st.session_state.dark_theme:
             st.session_state.dark_theme = theme_toggle
             st.rerun()
-        
-        # --- NEW DEVELOPER ENTRY SECTION ---
+
+        # --- ഡെവലപ്പർ സെക്ഷൻ ---
         st.divider()
-        if st.button("🛠️ ഡെവലപ്പർ എൻട്രി"):
-            st.session_state.show_dev_login = True
+        st.subheader("🛠️ Developer Area")
+        dev_password = st.text_input("Enter Passcode to view logs", type="password")
         
-        if st.session_state.get('show_dev_login', False):
-            pwd = st.text_input("Password", type="password")
-            if pwd == "shamsu123": # ഇവിടെ നിങ്ങൾക്ക് ഇഷ്ടമുള്ള പാസ്‌വേഡ് മാറ്റാം
-                st.success("Access Granted")
-                if st.session_state.user_data_log:
-                    log_df = pd.DataFrame(st.session_state.user_data_log)
-                    st.dataframe(log_df)
-                    
-                    towrite = io.BytesIO()
-                    log_df.to_excel(towrite, index=False, engine='xlsxwriter')
-                    towrite.seek(0)
-                    st.download_button(label="📥 Download User Logs (Excel)", data=towrite, file_name="User_Inputs_Log.xlsx", mime="application/vnd.ms-excel")
-                else:
-                    st.info("No data recorded yet.")
-            elif pwd != "":
-                st.error("Invalid Password")
+        if dev_password == "3753":
+            st.success("Access Granted!")
+            if st.session_state.user_data_log:
+                df_log = pd.DataFrame(st.session_state.user_data_log)
+                st.write("### User Input Logs")
+                st.dataframe(df_log, use_container_width=True)
+                
+                # എക്സൽ ഡൗൺലോഡ്
+                towrite = io.BytesIO()
+                df_log.to_excel(towrite, index=False, engine='xlsxwriter')
+                towrite.seek(0)
+                st.download_button(
+                    label="📥 Download All Logs as Excel",
+                    data=towrite,
+                    file_name="SWP_User_Logs.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True
+                )
+            else:
+                st.info("No user data recorded in this session.")
+        elif dev_password != "":
+            st.error("Incorrect Passcode!")
     
     col_name, col_spacer = st.columns([2, 1])
     with col_name:
-        user_name = st.text_input("👤 Enter Your Name *", placeholder="Your name for report")
+        # ബ്രൗസർ ഓട്ടോഫിൽ ഒഴിവാക്കാൻ autocomplete="off" ചേർത്തു
+        user_name = st.text_input("👤 Enter Your Name *", placeholder="Your name for report", autocomplete="off")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -353,15 +360,15 @@ def main():
             st.error("❌ Please enter your name!")
             st.stop()
         
-        # --- LOG DATA ON CALCULATION ---
+        # ഡാറ്റ ലോഗ് ചെയ്യുന്നു
         st.session_state.user_data_log.append({
-            'Time': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'User Name': user_name,
-            'Investment': investment_amount,
-            'Withdrawal': monthly_withdrawal,
+            'Principal': investment_amount,
+            'Initial Withdrawal': monthly_withdrawal,
             'Years': time_period,
             'Inflation': inflation_rate,
-            'Return': annual_return
+            'Return Rate': annual_return
         })
             
         results, total_withdrawn, final_balance = calculate_inflation_adjusted_swp(
