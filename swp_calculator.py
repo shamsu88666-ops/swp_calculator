@@ -8,6 +8,7 @@ from datetime import datetime
 # DEVELOPER CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 DEVELOPER_NAME = "SHAMSUDEEN ABDULLA"
+WHATSAPP_LINK = "https://wa.me/qr/IOBUQDQMM2X3D1"
 # ─────────────────────────────────────────────────────────────────────────────
 
 # --- ഡാറ്റ ശേഖരിക്കാനുള്ള സെഷൻ സ്റ്റേറ്റ് ---
@@ -299,6 +300,8 @@ def main():
         text-align: center;
         border: 1px solid #374151;
     }
+    /* Contact Button Styling */
+    .stDownloadButton, .stButton { text-align: center; }
     </style>
     """, unsafe_allow_html=True)
     
@@ -313,6 +316,11 @@ def main():
             st.session_state.dark_theme = theme_toggle
             st.rerun()
 
+        # --- വാട്സാപ്പ് ബട്ടൺ ---
+        st.divider()
+        st.subheader("📞 Support")
+        st.link_button("💬 Contact Developer", WHATSAPP_LINK, use_container_width=True, help="Chat with Shamasudeen Abdulla on WhatsApp")
+
         # --- ഡെവലപ്പർ സെക്ഷൻ ---
         st.divider()
         st.subheader("🛠️ Developer Area")
@@ -325,7 +333,6 @@ def main():
                 st.write("### User Input Logs")
                 st.dataframe(df_log, use_container_width=True)
                 
-                # എക്സൽ ഡൗൺലോഡ്
                 towrite = io.BytesIO()
                 df_log.to_excel(towrite, index=False, engine='xlsxwriter')
                 towrite.seek(0)
@@ -343,7 +350,6 @@ def main():
     
     col_name, col_spacer = st.columns([2, 1])
     with col_name:
-        # ബ്രൗസർ ഓട്ടോഫിൽ ഒഴിവാക്കാൻ autocomplete="off" ചേർത്തു
         user_name = st.text_input("👤 Enter Your Name *", placeholder="Your name for report", autocomplete="off")
     
     col1, col2 = st.columns(2)
@@ -360,7 +366,6 @@ def main():
             st.error("❌ Please enter your name!")
             st.stop()
         
-        # ഡാറ്റ ലോഗ് ചെയ്യുന്നു
         st.session_state.user_data_log.append({
             'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             'User Name': user_name,
