@@ -10,6 +10,10 @@ from datetime import datetime
 DEVELOPER_NAME = "SHAMSUDEEN ABDULLA"
 # ─────────────────────────────────────────────────────────────────────────────
 
+# --- NEW DATA LOGGING INITIALIZATION ---
+if 'user_data_log' not in st.session_state:
+    st.session_state.user_data_log = []
+
 MOTIVATIONAL_QUOTES = [
     "Invest in your future today, for tomorrow's prosperity begins with today's wise decisions.",
     "Financial freedom is not a dream; it's a goal achievable through planning and perseverance.",
@@ -308,6 +312,28 @@ def main():
         if theme_toggle != st.session_state.dark_theme:
             st.session_state.dark_theme = theme_toggle
             st.rerun()
+        
+        # --- NEW DEVELOPER ENTRY SECTION ---
+        st.divider()
+        if st.button("🛠️ ഡെവലപ്പർ എൻട്രി"):
+            st.session_state.show_dev_login = True
+        
+        if st.session_state.get('show_dev_login', False):
+            pwd = st.text_input("Password", type="password")
+            if pwd == "shamsu123": # ഇവിടെ നിങ്ങൾക്ക് ഇഷ്ടമുള്ള പാസ്‌വേഡ് മാറ്റാം
+                st.success("Access Granted")
+                if st.session_state.user_data_log:
+                    log_df = pd.DataFrame(st.session_state.user_data_log)
+                    st.dataframe(log_df)
+                    
+                    towrite = io.BytesIO()
+                    log_df.to_excel(towrite, index=False, engine='xlsxwriter')
+                    towrite.seek(0)
+                    st.download_button(label="📥 Download User Logs (Excel)", data=towrite, file_name="User_Inputs_Log.xlsx", mime="application/vnd.ms-excel")
+                else:
+                    st.info("No data recorded yet.")
+            elif pwd != "":
+                st.error("Invalid Password")
     
     col_name, col_spacer = st.columns([2, 1])
     with col_name:
@@ -326,6 +352,17 @@ def main():
         if not user_name.strip():
             st.error("❌ Please enter your name!")
             st.stop()
+        
+        # --- LOG DATA ON CALCULATION ---
+        st.session_state.user_data_log.append({
+            'Time': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'User Name': user_name,
+            'Investment': investment_amount,
+            'Withdrawal': monthly_withdrawal,
+            'Years': time_period,
+            'Inflation': inflation_rate,
+            'Return': annual_return
+        })
             
         results, total_withdrawn, final_balance = calculate_inflation_adjusted_swp(
             investment_amount, monthly_withdrawal, time_period, inflation_rate, annual_return
