@@ -110,7 +110,9 @@ def create_excel_report(data, summary, user_name):
         
         # COLUMN WIDTHS (Perfect Fit)
         worksheet.set_column('A:A', 32) # Parameter
-        worksheet.set_column('B:B', 20) # Value
+        # --- COLUMN B WIDTH INCREASED AS REQUESTED ---
+        worksheet.set_column('B:B', 35) # Value Column Width Increased
+        # ----------------------------------------------
         worksheet.set_column('C:C', 20) # Status
         worksheet.set_column('D:D', 65) # Wide Description Column
 
