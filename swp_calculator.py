@@ -58,12 +58,12 @@ def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, infla
     return results, total_withdrawn, max(current_balance, 0)
 
 def create_excel_report(data, summary, user_name):
-    """100% Professional Green Theme Design with Auto-Fitting Cells"""
+    """100% Professional Green Theme Design with Enhanced Strategic Descriptions"""
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         workbook = writer.book
         
-        # --- PROFESSIONAL GREEN THEME FORMATS ---
+        # --- ENHANCED FORMATS ---
         title_fmt = workbook.add_format({
             'bold': True, 'font_size': 18, 'align': 'center', 'valign': 'vcenter',
             'bg_color': '#1B5E20', 'font_color': 'white', 'border': 2
@@ -101,32 +101,37 @@ def create_excel_report(data, summary, user_name):
             'num_format': '0.00"%"', 'font_size': 10, 'align': 'center', 'valign': 'vcenter', 'border': 1
         })
 
+        # Text wrap format for descriptions
+        wrap_fmt = workbook.add_format({
+            'font_size': 10, 'align': 'left', 'valign': 'vcenter', 'border': 1, 'text_wrap': True
+        })
+
         worksheet = workbook.add_worksheet('SWP Detailed Report')
         
-        # COLUMN WIDTHS (Adjusted for perfect fit)
-        worksheet.set_column('A:A', 30)
-        worksheet.set_column('B:B', 22)
-        worksheet.set_column('C:C', 22)
-        worksheet.set_column('D:D', 45) # Extra wide for descriptions
+        # COLUMN WIDTHS (Perfect Fit)
+        worksheet.set_column('A:A', 32) # Parameter
+        worksheet.set_column('B:B', 20) # Value
+        worksheet.set_column('C:C', 20) # Status
+        worksheet.set_column('D:D', 65) # Wide Description Column
 
-        # HEADER SECTION
-        worksheet.merge_range('A1:D1', 'INFLATION-ADJUSTED SWP DETAILED REPORT', title_fmt)
+        # HEADER
+        worksheet.merge_range('A1:D1', 'INFLATION-ADJUSTED SWP STRATEGIC REPORT', title_fmt)
         worksheet.set_row(0, 30)
-        worksheet.merge_range('A2:D2', f"Client Name: {user_name}  |  Report Prepared by: SHAMSUDEEN ABDULLA  |  Date: {datetime.now().strftime('%d-%m-%Y')}", info_fmt)
+        worksheet.merge_range('A2:D2', f"Client: {user_name}  |  Report Prepared by: SHAMSUDEEN ABDULLA  |  Date: {datetime.now().strftime('%d-%m-%Y')}", info_fmt)
 
         # 1. INPUT PARAMETERS
-        worksheet.merge_range('A4:D4', '1. INPUT PARAMETERS', section_fmt)
+        worksheet.merge_range('A4:D4', 'SECTION 1: PORTFOLIO INPUT PARAMETERS', section_fmt)
         worksheet.write('A5', 'Parameter', header_fmt)
         worksheet.write('B5', 'Value', header_fmt)
-        worksheet.write('C5', 'Status', header_fmt)
-        worksheet.write('D5', 'Strategic Description', header_fmt)
+        worksheet.write('C5', 'Category', header_fmt)
+        worksheet.write('D5', 'Strategic Financial Description', header_fmt)
         
         inputs = [
-            ['Starting Corpus', summary['investment'], 'Initial Deposit', 'The total lump sum amount invested at the beginning.'],
-            ['Initial Monthly Withdrawal', summary['monthly_withdrawal'], 'Base Payout', 'The target monthly income required for the first year.'],
-            ['Investment Duration', summary['years'], 'Total Years', 'The full time horizon for the systematic withdrawal plan.'],
-            ['Expected Inflation Rate', summary['inflation'], 'Annual Increase', 'Projected annual percentage to adjust income for cost of living.'],
-            ['Expected Return Rate', summary['return_rate'], 'Annual ROI', 'The estimated annual growth rate of your remaining investment.']
+            ['Starting Corpus', summary['investment'], 'Initial Capital', 'The total lump sum principal amount allocated for generating a regular monthly cash flow.'],
+            ['Initial Monthly Withdrawal', summary['monthly_withdrawal'], 'Base Income', 'The target monthly income required in the first year to maintain current lifestyle standards.'],
+            ['Investment Duration', summary['years'], 'Time Horizon', 'The total projected period (in years) during which the Systematic Withdrawal Plan will operate.'],
+            ['Expected Inflation Rate', summary['inflation'], 'Cost of Living', 'The estimated annual rate at which the withdrawal amount will increase to preserve purchasing power.'],
+            ['Expected Return Rate', summary['return_rate'], 'Projected ROI', 'The expected annual compounded growth rate of the remaining portfolio balance after withdrawals.']
         ]
         
         row = 5
@@ -138,29 +143,29 @@ def create_excel_report(data, summary, user_name):
             else:
                 worksheet.write(row, 1, v, data_center_fmt)
             worksheet.write(row, 2, u, data_center_fmt)
-            worksheet.write(row, 3, d, data_center_fmt)
+            worksheet.write(row, 3, d, wrap_fmt)
             row += 1
 
-        # 2. CALCULATION SUMMARY
-        worksheet.merge_range(row+1, 0, row+1, 3, '2. CALCULATION SUMMARY', section_fmt)
+        # 2. SUMMARY
+        worksheet.merge_range(row+1, 0, row+1, 3, 'SECTION 2: AGGREGATE CALCULATION SUMMARY', section_fmt)
         summary_row = row + 2
-        worksheet.write(summary_row, 0, 'Total Estimated Withdrawals', label_fmt)
+        worksheet.write(summary_row, 0, 'Total Cumulative Withdrawals', label_fmt)
         worksheet.write(summary_row, 1, summary['total_withdrawn'], money_fmt)
-        worksheet.merge_range(summary_row, 2, summary_row, 3, 'Total amount received over the investment period.', data_center_fmt)
+        worksheet.merge_range(summary_row, 2, summary_row, 3, 'The total sum of all inflation-adjusted monthly payouts received over the specified tenure.', wrap_fmt)
         
-        worksheet.write(summary_row+1, 0, 'Final Portfolio Balance', label_fmt)
+        worksheet.write(summary_row+1, 0, 'Projected Year-End Balance', label_fmt)
         worksheet.write(summary_row+1, 1, summary['final_balance'], money_fmt)
-        worksheet.merge_range(summary_row+1, 2, summary_row+1, 3, 'The remaining capital at the end of the specified years.', data_center_fmt)
+        worksheet.merge_range(summary_row+1, 2, summary_row+1, 3, 'The estimated remaining market value of the investment portfolio after the final withdrawal.', wrap_fmt)
 
-        # 3. YEAR-WISE SCHEDULE
-        schedule_start = summary_row + 4
-        worksheet.merge_range(schedule_start-1, 0, schedule_start-1, 3, '3. YEAR-WISE WITHDRAWAL SCHEDULE', section_fmt)
+        # 3. SCHEDULE
+        sch_idx = summary_row + 4
+        worksheet.merge_range(sch_idx-1, 0, sch_idx-1, 3, 'SECTION 3: ANNUAL WITHDRAWAL & PORTFOLIO PROGRESSION', section_fmt)
         
-        headers = ['Year', 'Monthly Payout (Adjusted)', 'Annual Total Income', 'Year-End Capital Balance']
+        headers = ['Plan Year', 'Monthly Payout (Inflation Adjusted)', 'Annual Cash Outflow', 'Remaining Portfolio Balance']
         for col, h in enumerate(headers):
-            worksheet.write(schedule_start, col, h, header_fmt)
+            worksheet.write(sch_idx, col, h, header_fmt)
 
-        row = schedule_start + 1
+        row = sch_idx + 1
         for item in data:
             worksheet.write(row, 0, f"Year {item['Year']}", label_fmt)
             worksheet.write(row, 1, item['Monthly_Withdrawal'], money_fmt)
@@ -191,10 +196,10 @@ def main():
                     else: st.info("No logs.")
                 if st.checkbox("Show Analytics"):
                     try: streamlit_analytics.display_sections()
-                    except: st.info("Loading Analytics...")
+                    except: st.info("Loading Analytics Dashboard...")
 
         # --- UI INPUTS ---
-        user_name = st.text_input("👤 Enter Your Name *", placeholder="Your name")
+        user_name = st.text_input("👤 Client Name *", placeholder="Enter name")
         c1, c2 = st.columns(2)
         with c1:
             inv = st.number_input("💵 Starting Corpus (₹)", min_value=1000, value=1000000)
@@ -205,16 +210,16 @@ def main():
             ret = st.number_input("📊 Expected Return Rate (%)", value=12.0)
 
         st.divider()
-        if st.button("🧮 Calculate SWP Plan", type="primary", use_container_width=True):
+        if st.button("🧮 Calculate Strategic SWP Plan", type="primary", use_container_width=True):
             if not user_name:
-                st.error("❌ Please enter your name to generate report")
+                st.error("❌ Client name is required for report generation.")
                 st.stop()
             
             st.session_state.user_data_log.append({'Time': datetime.now().strftime("%H:%M"), 'User': user_name, 'Principal': inv})
             
             res, total_w, final_b = calculate_inflation_adjusted_swp(inv, withdr, yrs, inf, ret)
             
-            st.markdown("### 📊 summary Results")
+            st.markdown("### 📊 Strategic Summary")
             ca, cb, cc = st.columns(3)
             ca.metric("Starting Corpus", f"₹{inv:,}")
             cb.metric("Total Withdrawn", f"₹{int(total_w):,}")
@@ -224,7 +229,7 @@ def main():
             
             summary = {'investment': inv, 'monthly_withdrawal': withdr, 'years': yrs, 'inflation': inf, 'return_rate': ret, 'total_withdrawn': total_w, 'final_balance': final_b}
             excel = create_excel_report(res, summary, user_name)
-            st.download_button("📥 Download Full Excel Report", excel, f"SWP_Report_{user_name}.xlsx", use_container_width=True)
+            st.download_button("📥 Download Strategic Excel Report", excel, f"SWP_Strategic_Report_{user_name}.xlsx", use_container_width=True)
 
         st.divider()
         st.link_button("💬 Contact Developer on WhatsApp", WHATSAPP_LINK, use_container_width=True)
