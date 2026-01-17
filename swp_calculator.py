@@ -58,72 +58,115 @@ def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, infla
     return results, total_withdrawn, max(current_balance, 0)
 
 def create_excel_report(data, summary, user_name):
-    """abcd.xlsx മാതൃകയിലുള്ള 100% കൃത്യമായ ഡിസൈൻ"""
+    """100% Professional Design with Perfect Alignment and Descriptions"""
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         workbook = writer.book
         
-        # ഫോർമാറ്റുകൾ (നിങ്ങൾ നൽകിയ മാതൃക പ്രകാരം)
-        title_fmt = workbook.add_format({'bold': True, 'font_size': 16, 'align': 'center', 'valign': 'vcenter', 'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1})
-        subtitle_fmt = workbook.add_format({'font_size': 9, 'align': 'center', 'valign': 'vcenter', 'bg_color': '#E7F3FF', 'font_color': '#1F4E78', 'border': 1})
-        section_fmt = workbook.add_format({'bold': True, 'bg_color': '#2E86AB', 'font_color': 'white', 'align': 'center', 'valign': 'vcenter', 'font_size': 11, 'border': 1})
-        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#4472C4', 'font_color': 'white', 'align': 'center', 'valign': 'vcenter', 'font_size': 10, 'border': 1})
-        label_fmt = workbook.add_format({'bold': True, 'bg_color': '#F2F2F2', 'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10})
-        money_fmt = workbook.add_format({'num_format': '₹#,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10})
-        pct_fmt = workbook.add_format({'num_format': '0.00"%"', 'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10})
-        data_fmt = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10})
+        # --- PROFESSIONAL FORMATS ---
+        title_fmt = workbook.add_format({
+            'bold': True, 'font_size': 18, 'align': 'center', 'valign': 'vcenter',
+            'bg_color': '#1F4E78', 'font_color': 'white', 'border': 2
+        })
+        
+        info_fmt = workbook.add_format({
+            'font_size': 10, 'align': 'center', 'valign': 'vcenter',
+            'bg_color': '#DDEBF7', 'border': 1, 'italic': True
+        })
+        
+        section_fmt = workbook.add_format({
+            'bold': True, 'font_size': 12, 'align': 'left', 'valign': 'vcenter',
+            'bg_color': '#2E86AB', 'font_color': 'white', 'border': 1, 'indent': 1
+        })
+        
+        header_fmt = workbook.add_format({
+            'bold': True, 'font_size': 11, 'align': 'center', 'valign': 'vcenter',
+            'bg_color': '#4472C4', 'font_color': 'white', 'border': 1
+        })
+        
+        label_fmt = workbook.add_format({
+            'bold': True, 'font_size': 10, 'align': 'left', 'valign': 'vcenter',
+            'bg_color': '#F2F2F2', 'border': 1, 'indent': 1
+        })
+        
+        data_center_fmt = workbook.add_format({
+            'font_size': 10, 'align': 'center', 'valign': 'vcenter', 'border': 1
+        })
+        
+        money_fmt = workbook.add_format({
+            'num_format': '₹#,##0', 'font_size': 10, 'align': 'right', 'valign': 'vcenter', 'border': 1
+        })
+        
+        pct_fmt = workbook.add_format({
+            'num_format': '0.00"%"', 'font_size': 10, 'align': 'center', 'valign': 'vcenter', 'border': 1
+        })
 
-        worksheet = workbook.add_worksheet('SWP Report')
+        worksheet = workbook.add_worksheet('SWP Detailed Report')
+        
+        # COLUMN WIDTHS
         worksheet.set_column('A:A', 35)
-        worksheet.set_column('B:B', 25)
-        worksheet.set_column('C:C', 35)
-        worksheet.set_column('D:D', 30)
+        worksheet.set_column('B:B', 22)
+        worksheet.set_column('C:C', 22)
+        worksheet.set_column('D:D', 25)
 
-        # Header
-        worksheet.merge_range('A1:D1', 'INFLATION-ADJUSTED SWP CALCULATOR REPORT', title_fmt)
-        subtitle = f"Developed by: {DEVELOPER_NAME}  |  Report for: {user_name}"
-        worksheet.merge_range('A2:D2', subtitle, subtitle_fmt)
-        worksheet.merge_range('A3:D3', f'Generated on: {datetime.now().strftime("%d-%B-%Y")}', title_fmt)
+        # HEADER SECTION
+        worksheet.merge_range('A1:D1', 'INFLATION-ADJUSTED SWP DETAILED REPORT', title_fmt)
+        worksheet.set_row(0, 30)
+        worksheet.merge_range('A2:D2', f"Client Name: {user_name}  |  Generated on: {datetime.now().strftime('%d-%m-%Y %H:%M')}  |  Expert: {DEVELOPER_NAME}", info_fmt)
 
-        # Inputs Section
-        worksheet.merge_range('A4:C4', 'INPUT PARAMETERS', section_fmt)
-        worksheet.write('A5', 'Parameter', header_fmt); worksheet.write('B5', 'Value', header_fmt); worksheet.write('C5', 'Description', header_fmt)
+        # INPUT PARAMETERS
+        worksheet.merge_range('A4:D4', '1. INPUT PARAMETERS (നിക്ഷേപ വിവരങ്ങൾ)', section_fmt)
+        worksheet.write('A5', 'Parameter', header_fmt)
+        worksheet.write('B5', 'Value', header_fmt)
+        worksheet.write('C5', 'Unit/Status', header_fmt)
+        worksheet.write('D5', 'Strategic Description', header_fmt)
         
         inputs = [
-            ['Starting Corpus', summary['investment'], 'Initial lump sum deposited'],
-            ['Initial Monthly Withdrawal', summary['monthly_withdrawal'], 'Monthly withdrawal for first year'],
-            ['Investment Duration', f"{summary['years']} years", 'Total SWP period in years'],
-            ['Expected Inflation Rate', summary['inflation'], 'Annual inflation rate (%)'],
-            ['Expected Return Rate', summary['return_rate'], 'Annual ROI on investment (%)']
+            ['Starting Corpus', summary['investment'], 'Initial Lump Sum', 'The total capital available for the SWP strategy.'],
+            ['Initial Monthly Withdrawal', summary['monthly_withdrawal'], 'Monthly Payout', 'The target monthly income required in the first year.'],
+            ['Investment Duration', summary['years'], 'Years', 'The planned horizon for receiving consistent monthly income.'],
+            ['Expected Inflation Rate', summary['inflation'], 'Annual %', 'Anticipated annual increase in the cost of living.'],
+            ['Expected Return Rate', summary['return_rate'], 'Annual ROI %', 'The projected annual growth of your remaining investment.']
         ]
-        for i, (l, v, d) in enumerate(inputs, start=5):
-            worksheet.write(i, 0, l, label_fmt)
-            if 'Rate' in l: worksheet.write(i, 1, float(v), pct_fmt)
-            elif 'Corpus' in l or 'Withdrawal' in l: worksheet.write(i, 1, float(v), money_fmt)
-            else: worksheet.write(i, 1, v, data_fmt)
-            worksheet.write(i, 2, d, data_fmt)
+        
+        row = 5
+        for l, v, u, d in inputs:
+            worksheet.write(row, 0, l, label_fmt)
+            if isinstance(v, (int, float)) and l != 'Investment Duration':
+                if 'Rate' in l: worksheet.write(row, 1, v, pct_fmt)
+                else: worksheet.write(row, 1, v, money_fmt)
+            else:
+                worksheet.write(row, 1, v, data_center_fmt)
+            worksheet.write(row, 2, u, data_center_fmt)
+            worksheet.write(row, 3, d, data_center_fmt)
+            row += 1
 
-        # Calculation Results
-        worksheet.merge_range('A11:C11', 'CALCULATION RESULTS', section_fmt)
-        worksheet.write('A12', 'Metric', header_fmt); worksheet.write('B12', 'Amount', header_fmt); worksheet.write('C12', 'Notes', header_fmt)
-        res_sum = [
-            ['Total Withdrawn Amount', summary['total_withdrawn'], 'Sum of all monthly withdrawals'],
-            ['Final Balance Remaining', summary['final_balance'], 'Value at the end of period']
-        ]
-        for i, (l, v, n) in enumerate(res_sum, start=12):
-            worksheet.write(i, 0, l, label_fmt); worksheet.write(i, 1, float(v), money_fmt); worksheet.write(i, 2, n, data_fmt)
+        # SUMMARY SECTION
+        worksheet.merge_range(row+1, 0, row+1, 3, '2. CALCULATION SUMMARY (ആകെ ലഭിക്കുന്ന തുക)', section_fmt)
+        summary_row = row + 2
+        worksheet.write(summary_row, 0, 'Total Estimated Withdrawals', label_fmt)
+        worksheet.write(summary_row, 1, summary['total_withdrawn'], money_fmt)
+        worksheet.merge_range(summary_row, 2, summary_row, 3, 'Cumulative income received over the entire period.', data_center_fmt)
+        
+        worksheet.write(summary_row+1, 0, 'Final Estimated Balance', label_fmt)
+        worksheet.write(summary_row+1, 1, summary['final_balance'], money_fmt)
+        worksheet.merge_range(summary_row+1, 2, summary_row+1, 3, 'Remaining portfolio value after the final withdrawal.', data_center_fmt)
 
-        # Year-wise Schedule
-        worksheet.merge_range('A17:D17', 'YEAR-WISE WITHDRAWAL SCHEDULE', section_fmt)
-        headers = ['Year', 'Monthly Withdrawal', 'Yearly Withdrawal', 'Year-End Balance']
-        for col, h in enumerate(headers): worksheet.write(17, col, h, header_fmt)
+        # YEARLY SCHEDULE
+        schedule_start = summary_row + 4
+        worksheet.merge_range(schedule_start-1, 0, schedule_start-1, 3, '3. YEAR-WISE WITHDRAWAL SCHEDULE (വർഷം തിരിച്ചുള്ള വിവരങ്ങൾ)', section_fmt)
+        
+        headers = ['Year', 'Monthly Withdrawal (With Inflation)', 'Total Yearly Payout', 'Remaining Balance (Year-End)']
+        for col, h in enumerate(headers):
+            worksheet.write(schedule_start, col, h, header_fmt)
 
-        for idx, item in enumerate(data):
-            row = 18 + idx
-            worksheet.write(row, 0, item['Year'], data_fmt)
-            worksheet.write(row, 1, float(item['Monthly_Withdrawal']), money_fmt)
-            worksheet.write(row, 2, float(item['Yearly_Withdrawal']), money_fmt)
-            worksheet.write(row, 3, float(item['Year_End_Balance']), money_fmt)
+        row = schedule_start + 1
+        for item in data:
+            worksheet.write(row, 0, f"Year {item['Year']}", label_fmt)
+            worksheet.write(row, 1, item['Monthly_Withdrawal'], money_fmt)
+            worksheet.write(row, 2, item['Yearly_Withdrawal'], money_fmt)
+            worksheet.write(row, 3, item['Year_End_Balance'], money_fmt)
+            row += 1
 
     output.seek(0)
     return output
