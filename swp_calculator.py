@@ -101,11 +101,11 @@ def create_excel_report(data, summary, user_name):
         
         label_format = workbook.add_format({
             'bold': True, 'bg_color': '#F2F2F2', 'border': 1,
-            'valign': 'vcenter', 'font_size': 10
+            'align': 'center', 'valign': 'vcenter', 'font_size': 10
         })
         
         money_format = workbook.add_format({
-            'num_format': '₹#,##0', 'border': 1, 'align': 'right',
+            'num_format': '₹#,##0', 'border': 1, 'align': 'center',
             'valign': 'vcenter', 'font_size': 10
         })
         
@@ -119,7 +119,7 @@ def create_excel_report(data, summary, user_name):
         })
         
         note_format = workbook.add_format({
-            'italic': True, 'font_size': 9, 'valign': 'vcenter', 'border': 1
+            'italic': True, 'font_size': 9, 'align': 'center', 'valign': 'vcenter', 'border': 1
         })
         
         worksheet = workbook.add_worksheet('SWP Report')
@@ -139,7 +139,7 @@ def create_excel_report(data, summary, user_name):
         worksheet.write('C5', 'Description', header_format)
         
         inputs = [
-            ['Investment Amount', summary['investment'], 'Initial lump sum deposited'],
+            ['Starting Corpus', summary['investment'], 'Initial lump sum deposited'],
             ['Initial Monthly Withdrawal', summary['monthly_withdrawal'], 'Monthly withdrawal for first year'],
             ['Investment Duration', f"{summary['years']} years", 'Total SWP period in years'],
             ['Expected Inflation Rate', summary['inflation'], 'Annual inflation rate (%)'],
@@ -160,7 +160,7 @@ def create_excel_report(data, summary, user_name):
         worksheet.write('C12', 'Notes', header_format)
         
         results_summary = [
-            ['Total Invested Amount', summary['investment'], 'Your initial capital'],
+            ['Starting Corpus', summary['investment'], 'Your initial capital'],
             ['Total Withdrawn Amount', summary['total_withdrawn'], 'Sum of all withdrawals'],
             ['Final Balance Remaining', summary['final_balance'], 'Value at end of period']
         ]
@@ -228,7 +228,7 @@ def main():
     
     col1, col2 = st.columns(2)
     with col1:
-        investment_amount = st.number_input("💵 Investment Amount (₹) *", min_value=1000, value=1000000)
+        investment_amount = st.number_input("💵 Starting Corpus (₹) *", min_value=1000, value=1000000)
         monthly_withdrawal = st.number_input("💸 Initial Monthly Withdrawal (₹) *", min_value=100, value=50000)
     with col2:
         time_period = st.number_input("⏱️ Time Period (Years) *", min_value=1, max_value=50, value=20)
@@ -259,7 +259,7 @@ def main():
         
         st.markdown("### 📊 Summary Results")
         c1, c2, c3 = st.columns(3)
-        c1.markdown(f'<div class="result-card"><h4>Invested</h4><h2>₹{int(investment_amount):,}</h2></div>', unsafe_allow_html=True)
+        c1.markdown(f'<div class="result-card"><h4>Starting Corpus</h4><h2>₹{int(investment_amount):,}</h2></div>', unsafe_allow_html=True)
         c2.markdown(f'<div class="result-card"><h4>Withdrawn</h4><h2>₹{int(total_withdrawn):,}</h2></div>', unsafe_allow_html=True)
         c3.markdown(f'<div class="result-card"><h4>Balance</h4><h2>₹{int(final_balance):,}</h2></div>', unsafe_allow_html=True)
         
