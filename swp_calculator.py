@@ -3,12 +3,14 @@ import pandas as pd
 import numpy as np
 import io
 from datetime import datetime
+import streamlit_analytics
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DEVELOPER CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 DEVELOPER_NAME = "SHAMSUDEEN ABDULLA"
 WHATSAPP_LINK = "https://wa.me/qr/IOBUQDQMM2X3D1"
+PASSCODE = "3753"  # രണ്ടിനും ഒരേ പാസ്‌വേഡ് തന്നെ ഉപയോഗിക്കുന്നു
 # ─────────────────────────────────────────────────────────────────────────────
 
 # --- ഡാറ്റ ശേഖരിക്കാനുള്ള സെഷൻ സ്റ്റേറ്റ് ---
@@ -76,9 +78,6 @@ def create_excel_report(data, summary, user_name):
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         workbook = writer.book
         
-        # ─────────────────────────────────────────────────────────────────────
-        # ESSENTIAL FORMATS ONLY - MINIMAL & CLEAN
-        # ─────────────────────────────────────────────────────────────────────
         title_format = workbook.add_format({
             'bold': True, 'font_size': 16, 'align': 'center', 'valign': 'vcenter',
             'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1
@@ -118,15 +117,8 @@ def create_excel_report(data, summary, user_name):
             'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10
         })
         
-        note_format = workbook.add_format({
-            'italic': True, 'font_size': 9, 'align': 'center', 'valign': 'vcenter', 'border': 1
-        })
-        
         worksheet = workbook.add_worksheet('SWP Report')
-        worksheet.set_column('A:A', 35)
-        worksheet.set_column('B:B', 30)
-        worksheet.set_column('C:C', 40)
-        worksheet.set_column('D:D', 35)
+        worksheet.set_column('A:D', 25)
         
         worksheet.merge_range('A1:D1', 'INFLATION-ADJUSTED SWP CALCULATOR REPORT', title_format)
         subtitle = f"Developed by: {DEVELOPER_NAME}  |  Report for: {user_name}"
@@ -183,96 +175,112 @@ def create_excel_report(data, summary, user_name):
                 worksheet.write(row, 1, item['Monthly_Withdrawal'], money_format)
                 worksheet.write(row, 2, item['Yearly_Withdrawal'], money_format)
                 worksheet.write(row, 3, item['Year_End_Balance'], money_format)
-    
+            
     output.seek(0)
     return output
 
 def main():
-    st.set_page_config(
-        page_title="Inflation-Adjusted SWP Calculator",
-        page_icon="💰",
-        layout="centered"
-    )
-    
-    st.markdown("""
-    <style>
-    .main-header { color: #1E90FF; font-size: 2.5rem; font-weight: 800; text-align: center; }
-    .developer-name { color: #32CD32; font-size: 1.1rem; font-weight: 600; text-align: center; }
-    .motivation-quote { font-style: italic; color: #FF6347; font-size: 1.1rem; padding: 12px; border-left: 5px solid #FFD700; background: rgba(255,215,0,0.05); text-align: center; border-radius: 8px; }
-    .result-card { background: #1A2233; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #374151; }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    st.markdown(f'<div class="main-header">Inflation-Adjusted SWP Calculator</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="developer-name">Developed by {DEVELOPER_NAME}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="motivation-quote">{np.random.choice(MOTIVATIONAL_QUOTES)}</div>', unsafe_allow_html=True)
-    
-    # --- DEVELOPER AREA IN SIDEBAR ---
-    with st.sidebar:
-        st.subheader("🛠️ Developer Area")
-        dev_password = st.text_input("Enter Passcode", type="password")
-        if dev_password == "3753":
-            if st.session_state.user_data_log:
-                df_log = pd.DataFrame(st.session_state.user_data_log)
-                st.dataframe(df_log)
-                towrite = io.BytesIO()
-                df_log.to_excel(towrite, index=False, engine='xlsxwriter')
-                towrite.seek(0)
-                st.download_button("📥 Download Logs", towrite, "Logs.xlsx", use_container_width=True)
-            else:
-                st.info("No data.")
-    
-    col_name, col_spacer = st.columns([2, 1])
-    with col_name:
-        user_name = st.text_input("👤 Enter Your Name *", placeholder="Your name", autocomplete="off")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        investment_amount = st.number_input("💵 Starting Corpus (₹) *", min_value=1000, value=1000000)
-        monthly_withdrawal = st.number_input("💸 Initial Monthly Withdrawal (₹) *", min_value=100, value=50000)
-    with col2:
-        time_period = st.number_input("⏱️ Time Period (Years) *", min_value=1, max_value=50, value=20)
-        inflation_rate = st.number_input("📈 Expected Inflation Rate (% pa) *", value=6.0)
-        annual_return = st.number_input("📊 Expected Return Rate (% pa) *", value=12.0)
-    
-    # --- MAIN UI BUTTONS ---
-    st.divider()
-    calc_btn = st.button("🧮 Calculate SWP Plan", type="primary", use_container_width=True)
-    
-    # പബ്ലിക് ആയി എല്ലാവർക്കും കാണാൻ കഴിയുന്ന വാട്സാപ്പ് ബട്ടൺ
-    st.link_button("💬 Contact Developer on WhatsApp", WHATSAPP_LINK, use_container_width=True)
-    st.divider()
-
-    if calc_btn:
-        if not user_name.strip():
-            st.error("❌ Enter your name!")
-            st.stop()
-        
-        st.session_state.user_data_log.append({
-            'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'User': user_name, 'Principal': investment_amount, 'Withdrawal': monthly_withdrawal
-        })
-            
-        results, total_withdrawn, final_balance = calculate_inflation_adjusted_swp(
-            investment_amount, monthly_withdrawal, time_period, inflation_rate, annual_return
+    # Streamlit Analytics ട്രാക്കിംഗ് തുടങ്ങുന്നു
+    with streamlit_analytics.track():
+        st.set_page_config(
+            page_title="Inflation-Adjusted SWP Calculator",
+            page_icon="💰",
+            layout="centered"
         )
         
-        st.markdown("### 📊 Summary Results")
-        c1, c2, c3 = st.columns(3)
-        c1.markdown(f'<div class="result-card"><h4>Starting Corpus</h4><h2>₹{int(investment_amount):,}</h2></div>', unsafe_allow_html=True)
-        c2.markdown(f'<div class="result-card"><h4>Withdrawn</h4><h2>₹{int(total_withdrawn):,}</h2></div>', unsafe_allow_html=True)
-        c3.markdown(f'<div class="result-card"><h4>Balance</h4><h2>₹{int(final_balance):,}</h2></div>', unsafe_allow_html=True)
+        st.markdown("""
+        <style>
+        .main-header { color: #1E90FF; font-size: 2.5rem; font-weight: 800; text-align: center; }
+        .developer-name { color: #32CD32; font-size: 1.1rem; font-weight: 600; text-align: center; }
+        .motivation-quote { font-style: italic; color: #FF6347; font-size: 1.1rem; padding: 12px; border-left: 5px solid #FFD700; background: rgba(255,215,0,0.05); text-align: center; border-radius: 8px; }
+        .result-card { background: #1A2233; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #374151; }
+        </style>
+        """, unsafe_allow_html=True)
         
-        st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+        st.markdown(f'<div class="main-header">Inflation-Adjusted SWP Calculator</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="developer-name">Developed by {DEVELOPER_NAME}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="motivation-quote">{np.random.choice(MOTIVATIONAL_QUOTES)}</div>', unsafe_allow_html=True)
         
-        summary = {
-            'investment': int(investment_amount), 'monthly_withdrawal': int(monthly_withdrawal),
-            'years': time_period, 'inflation': inflation_rate, 'return_rate': annual_return,
-            'total_withdrawn': int(total_withdrawn), 'final_balance': int(final_balance)
-        }
+        # --- DEVELOPER AREA IN SIDEBAR ---
+        with st.sidebar:
+            st.title("🛠️ Settings")
+            st.write("Only for Admin")
+            dev_password = st.text_input("Enter Passcode", type="password")
+            
+            if dev_password == PASSCODE:
+                st.success("Access Granted!")
+                
+                # Option 1: View User Logs
+                if st.checkbox("Show User Logs"):
+                    if st.session_state.user_data_log:
+                        df_log = pd.DataFrame(st.session_state.user_data_log)
+                        st.dataframe(df_log)
+                        towrite = io.BytesIO()
+                        df_log.to_excel(towrite, index=False, engine='xlsxwriter')
+                        towrite.seek(0)
+                        st.download_button("📥 Download Logs", towrite, "Logs.xlsx", use_container_width=True)
+                    else:
+                        st.info("No logs yet.")
+                
+                # Option 2: View App Analytics (Traffic, Clicks etc)
+                if st.checkbox("Show App Analytics"):
+                    st.write("---")
+                    st.subheader("📊 Traffic Analytics")
+                    # ഇന്റർഫേസിൽ തന്നെ അനലിറ്റിക്സ് സെക്ഷൻ കാണിക്കുന്നു
+                    streamlit_analytics.display_sections()
+            
+            elif dev_password != "":
+                st.error("Wrong Passcode")
         
-        excel_file = create_excel_report(results, summary, user_name)
-        st.download_button("📥 Download Excel Report", excel_file, f"SWP_{user_name}.xlsx", use_container_width=True)
+        # --- INPUTS ---
+        col_name, col_spacer = st.columns([2, 1])
+        with col_name:
+            user_name = st.text_input("👤 Enter Your Name *", placeholder="Your name", autocomplete="off")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            investment_amount = st.number_input("💵 Starting Corpus (₹) *", min_value=1000, value=1000000)
+            monthly_withdrawal = st.number_input("💸 Initial Monthly Withdrawal (₹) *", min_value=100, value=50000)
+        with col2:
+            time_period = st.number_input("⏱️ Time Period (Years) *", min_value=1, max_value=50, value=20)
+            inflation_rate = st.number_input("📈 Expected Inflation Rate (% pa) *", value=6.0)
+            annual_return = st.number_input("📊 Expected Return Rate (% pa) *", value=12.0)
+        
+        st.divider()
+        calc_btn = st.button("🧮 Calculate SWP Plan", type="primary", use_container_width=True)
+        st.link_button("💬 Contact Developer on WhatsApp", WHATSAPP_LINK, use_container_width=True)
+        st.divider()
+
+        if calc_btn:
+            if not user_name.strip():
+                st.error("❌ Enter your name!")
+                st.stop()
+            
+            st.session_state.user_data_log.append({
+                'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                'User': user_name, 'Principal': investment_amount, 'Withdrawal': monthly_withdrawal
+            })
+                
+            results, total_withdrawn, final_balance = calculate_inflation_adjusted_swp(
+                investment_amount, monthly_withdrawal, time_period, inflation_rate, annual_return
+            )
+            
+            st.markdown("### 📊 Summary Results")
+            c1, c2, c3 = st.columns(3)
+            c1.markdown(f'<div class="result-card"><h4>Starting Corpus</h4><h2>₹{int(investment_amount):,}</h2></div>', unsafe_allow_html=True)
+            c2.markdown(f'<div class="result-card"><h4>Withdrawn</h4><h2>₹{int(total_withdrawn):,}</h2></div>', unsafe_allow_html=True)
+            c3.markdown(f'<div class="result-card"><h4>Balance</h4><h2>₹{int(final_balance):,}</h2></div>', unsafe_allow_html=True)
+            
+            st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+            
+            summary = {
+                'investment': int(investment_amount), 'monthly_withdrawal': int(monthly_withdrawal),
+                'years': time_period, 'inflation': inflation_rate, 'return_rate': annual_return,
+                'total_withdrawn': int(total_withdrawn), 'final_balance': int(final_balance)
+            }
+            
+            excel_file = create_excel_report(results, summary, user_name)
+            st.download_button("📥 Download Excel Report", excel_file, f"SWP_{user_name}.xlsx", use_container_width=True)
 
 if __name__ == "__main__":
     main()
