@@ -9,6 +9,7 @@ def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, infla
     current_monthly_withdrawal = float(monthly_withdrawal)
     
     total_months = years * 12
+    yearly_withdrawal_total = 0.0
     
     for month in range(1, total_months + 1):
         # മാസം തുടങ്ങുമ്പോൾ ഇൻഫ്ലേഷൻ പ്രയോഗിക്കുക
@@ -17,25 +18,29 @@ def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, infla
         
         # പിൻവലിക്കൽ
         if deplete_exactly and month == total_months:
-            # അവസാന മാസം - എല്ലാം എടുക്കുക
             withdrawal = current_balance
         else:
             withdrawal = min(current_monthly_withdrawal, current_balance)
+        
+        # വർഷ ആകെക്കൂടിൽ ചേർക്കുക
+        yearly_withdrawal_total += withdrawal
         
         current_balance -= withdrawal
         total_withdrawn += withdrawal
         
         # ROI പ്രയോഗിക്കുക
-        current_balance *= (1.0 + monthly_rate)
+        if current_balance > 0:
+            current_balance *= (1.0 + monthly_rate)
         
-        if month % 12 == 0:  # വർഷം അവസാനം
-            year_num = month // 12
+        # വർഷം അവസാനം
+        if month % 12 == 0:
             results.append({
-                'Year': year_num,
-                'Monthly_Withdrawal': round(current_monthly_withdrawal, 0),
-                'Yearly_Withdrawal': round(withdrawal * (12 - (month - year_num * 12) + 1), 0),  # ശരിയായ ആകെ
-                'Year_End_Balance': round(max(current_balance, 0.0), 0)
+                'Year': month // 12,
+                'Monthly_Withdrawal': round(current_monthly_withdrawal, 2),
+                'Yearly_Withdrawal': round(yearly_withdrawal_total, 2),
+                'Year_End_Balance': round(max(current_balance, 0.0), 2)
             })
+            yearly_withdrawal_total = 0.0  # അടுத்த വർഷത്തിനായി റീസെറ്റ് ചെയ്യുക
         
         if current_balance <= 0:
             break
