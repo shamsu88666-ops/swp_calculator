@@ -1,213 +1,278 @@
 import streamlit as st
 import pandas as pd
-import random
-import time
-from datetime import date
+import numpy as np
 import io
+from datetime import datetime
 
-# --- APP CONFIGURATION ---
-st.set_page_config(page_title="Retirement Planner Pro - Final Edition", layout="wide")
+# ─────────────────────────────────────────────────────────────────────────────
+# DEVELOPER CONFIGURATION
+# ─────────────────────────────────────────────────────────────────────────────
+DEVELOPER_NAME = "SHAMSUDEEN ABDULLA"
+WHATSAPP_LINK = "https://wa.me/qr/IOBUQDQMM2X3D1"
+# ─────────────────────────────────────────────────────────────────────────────
 
-# --- CUSTOM CSS (NO CHANGES) ---
-st.markdown("""
-    <style>
-    .stApp { background-color: #0E1116 !important; color: #E5E7EB !important; }
-    .main { background-color: #0E1116 !important; }
-    .input-card {
-        background-color: #1A2233 !important; padding: 25px; border-radius: 10px;
-        border: 1px solid #374151; color: #E5E7EB !important;
-    }
-    .result-text { color: #22C55E !important; font-family: 'Courier New', monospace; font-weight: bold; }
-    .quote-text { color: #22C55E !important; font-style: italic; font-weight: bold; text-align: center; display: block; margin-top: 20px; }
-    .stButton>button {
-        background-color: #22C55E !important; color: white !important; width: 100%;
-        border: none; font-weight: bold; height: 3.5em; border-radius: 8px;
-    }
-    .stButton>button:hover { background-color: #16a34a !important; }
-    label, p, span, h1, h2, h3 { color: #E5E7EB !important; }
-    [data-testid="stMetricLabel"] { color: #9CA3AF !important; }
-    [data-testid="stMetricValue"] { color: #FFFFFF !important; }
-    .dev-container { text-align: center; margin-bottom: 25px; }
-    .dev-btn { display: inline-block; padding: 8px 16px; margin: 5px; border-radius: 5px; text-decoration: none !important; font-weight: bold; color: white !important; font-size: 13px; }
-    .wa-btn { background-color: #25D366; }
-    .fb-btn { background-color: #1877F2; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- ഡാറ്റ ശേഖരിക്കാനുള്ള സെഷൻ സ്റ്റേറ്റ് ---
+if 'user_data_log' not in st.session_state:
+    st.session_state.user_data_log = []
 
-# --- MOTIVATION QUOTES ---
-all_quotes = [
-    "“Investment is not a one-time decision, it is a lifetime habit.”",
-    "“Wealth is not created overnight; it grows with consistency.”",
-    "“The day you start a SIP, your future begins.”",
-    "“SIP to build wealth, SWP to live life.”",
-    "“Start today, for the sake of tomorrow.”"
+MOTIVATIONAL_QUOTES = [
+    "Invest in your future today, for tomorrow's prosperity begins with today's wise decisions.",
+    "Financial freedom is not a dream; it's a goal achievable through planning and perseverance.",
+    "Every rupee invested wisely today is a seed for tomorrow's financial garden.",
+    "Inflation may rise, but so can your wealth—with the right strategy and patience."
 ]
 
-# --- CORE LOGIC (ENHANCED FOR ACCURACY) ---
-def calculate_retirement_final(c_age, r_age, l_exp, c_exp, inf_rate, c_sav, e_corp, pre_ret_r, post_ret_r, legacy_amount_real):
-    months_to_retire = (r_age - c_age) * 12
-    retirement_months = (l_exp - r_age) * 12
+def calculate_effective_monthly_rate(annual_rate):
+    """Calculate effective monthly rate from annual rate"""
+    return (1 + annual_rate/100) ** (1/12) - 1
+
+def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, inflation_rate, annual_return_rate):
+    """Calculate inflation-adjusted SWP with effective interest calculation"""
+    monthly_rate = calculate_effective_monthly_rate(annual_return_rate)
     
-    monthly_inf = (1 + inf_rate/100) ** (1/12) - 1
-    monthly_pre_ret = (1 + pre_ret_r/100) ** (1/12) - 1
-    monthly_post_ret = (1 + post_ret_r/100) ** (1/12) - 1
+    results = []
+    total_withdrawn = 0
+    current_balance = principal
+    current_monthly_withdrawal = monthly_withdrawal
     
-    expense_at_retirement = c_exp * (1 + monthly_inf) ** months_to_retire
-    
-    # Corpus Required Calculation
-    legacy_nominal = legacy_amount_real * (1 + monthly_inf) ** ((l_exp - c_age) * 12)
-    if abs(monthly_post_ret - monthly_inf) > 0.0001:
-        pv_expenses = expense_at_retirement * (1 - ((1 + monthly_inf) / (1 + monthly_post_ret)) ** retirement_months) / (monthly_post_ret - monthly_inf)
-    else:
-        pv_expenses = expense_at_retirement * retirement_months
-    
-    pv_legacy = legacy_nominal / (1 + monthly_post_ret) ** retirement_months if legacy_nominal > 0 else 0
-    corp_req = pv_expenses + pv_legacy
-    
-    # Current Savings Projection
-    future_existing = e_corp * (1 + monthly_pre_ret) ** months_to_retire
-    if monthly_pre_ret > 0:
-        future_sip = c_sav * (((1 + monthly_pre_ret) ** months_to_retire - 1) / monthly_pre_ret) * (1 + monthly_pre_ret)
-    else:
-        future_sip = c_sav * months_to_retire
+    for year in range(1, years + 1):
+        if year > 1:
+            current_monthly_withdrawal = current_monthly_withdrawal * (1 + inflation_rate/100)
         
-    total_savings = future_existing + future_sip
-    shortfall = max(0, corp_req - total_savings)
-    
-    # Required to fill shortfall
-    req_sip = 0
-    req_lumpsum = 0
-    if shortfall > 0 and months_to_retire > 0:
-        req_sip = (shortfall * monthly_pre_ret) / (((1 + monthly_pre_ret) ** months_to_retire - 1) * (1 + monthly_pre_ret))
-        req_lumpsum = shortfall / ((1 + monthly_pre_ret) ** months_to_retire)
-    
-    # Detailed Annual Breakdown
-    annual_withdrawals = []
-    current_balance = corp_req
-    total_withdrawn_sum = 0
-    
-    for year in range(retirement_months // 12):
-        monthly_expense_this_year = expense_at_retirement * (1 + monthly_inf) ** (year * 12)
-        yearly_withdrawal = round(monthly_expense_this_year * 12)
-        total_withdrawn_sum += yearly_withdrawal
+        yearly_withdrawal_total = 0
         
-        for month in range(12):
-            current_balance = (current_balance * (1 + monthly_post_ret)) - monthly_expense_this_year
+        for month in range(1, 13):
+            if current_balance <= 0:
+                break
+                
+            current_balance = current_balance * (1 + monthly_rate)
+            withdrawal = min(current_monthly_withdrawal, current_balance)
+            current_balance -= withdrawal
+            yearly_withdrawal_total += withdrawal
+            
+            if current_balance <= 0:
+                break
         
-        annual_withdrawals.append({
-            "Age": r_age + year,
-            "Year": year + 1,
-            "Annual Withdrawal": yearly_withdrawal,
-            "Monthly Amount": round(monthly_expense_this_year),
-            "Remaining Corpus": round(max(current_balance, 0))
+        total_withdrawn += yearly_withdrawal_total
+        
+        results.append({
+            'Year': year,
+            'Monthly_Withdrawal': round(current_monthly_withdrawal, 0),
+            'Yearly_Withdrawal': round(yearly_withdrawal_total, 0),
+            'Year_End_Balance': round(max(current_balance, 0), 0)
         })
+        
+        if current_balance <= 0:
+            break
     
-    return {
-        "future_exp": round(expense_at_retirement),
-        "corp_req": round(corp_req),
-        "total_sav": round(total_savings),
-        "shortfall": round(shortfall),
-        "req_sip": round(req_sip),
-        "req_lumpsum": round(req_lumpsum),
-        "legacy_real": round(legacy_amount_real),
-        "legacy_nominal": round(legacy_nominal),
-        "annual_withdrawals": annual_withdrawals,
-        "total_withdrawn_sum": total_withdrawn_sum
-    }
+    return results, total_withdrawn, max(current_balance, 0)
 
-# --- MAIN APP (USER INTERFACE) ---
-st.markdown("<h1 style='text-align: center;'>RETIREMENT PLANNER PRO</h1>", unsafe_allow_html=True)
-
-st.markdown(f"""
-    <div class="dev-container">
-        <p style='margin-bottom: 5px; font-size: 0.9em; color: #6B7280;'>Developed by Shamsudeen abdulla</p>
-        <a href="https://wa.me/qr/IOBUQDQMM2X3D1" target="_blank" class="dev-btn wa-btn">WhatsApp Developer</a>
-        <a href="https://www.facebook.com/shamsudeen.abdulla.2025/" target="_blank" class="dev-btn fb-btn">Facebook Profile</a>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown('<div class="input-card">', unsafe_allow_html=True)
-user_name = st.text_input("Name of the User", value="Valued User")
-col1, col2 = st.columns(2)
-
-with col1:
-    st.markdown("### 👤 Personal Information")
-    current_age = st.number_input("Current Age", value=30, min_value=0, step=1)
-    retire_age = st.number_input("Retirement Age", value=60, min_value=current_age+1, step=1)
-    life_exp = st.number_input("Expected Life Expectancy", value=85, min_value=retire_age+1, step=1)
-    current_expense = st.number_input("Current Monthly Expense (₹)", value=30000, step=500)
-
-with col2:
-    st.markdown("### 💰 Investment Details")
-    inf_rate = st.number_input("Inflation Rate (%)", value=6.0, step=0.1)
-    existing_corp = st.number_input("Existing Savings (₹)", value=0, step=5000)
-    current_sip = st.number_input("Current Monthly SIP (₹)", value=0, step=100)
-    pre_ret_rate = st.number_input("Pre-retirement Returns (%)", value=12.0, step=0.1)
-    post_ret_rate = st.number_input("Post-retirement Returns (%)", value=8.0, step=0.1)
-    legacy_amount = st.number_input("Legacy (Today's Real Value) (₹)", value=0, step=100000)
-st.markdown('</div>', unsafe_allow_html=True)
-
-if st.button("Calculate"):
-    res = calculate_retirement_final(current_age, retire_age, life_exp, current_expense, inf_rate, current_sip, existing_corp, pre_ret_rate, post_ret_rate, legacy_amount)
-    st.session_state.res = res
-    st.session_state.user_name = user_name
+def create_excel_report(data, summary, user_name):
+    """Create CLEAN, FUNCTIONAL Excel with PERFECT visibility"""
+    import xlsxwriter
     
-    st.divider()
-    r1, r2 = st.columns(2)
-    with r1:
-        st.metric("Monthly Expense at Retirement", f"₹ {res['future_exp']:,}")
-        st.metric("Total Fund Required (Corpus)", f"₹ {res['corp_req']:,}")
-    with r2:
-        st.metric("Projected Total Savings", f"₹ {res['total_sav']:,}")
-        st.metric("Shortfall", f"₹ {res['shortfall']:,}", delta_color="inverse")
-
-    st.write("### Retirement Cashflow Analysis")
-    st.dataframe(pd.DataFrame(res["annual_withdrawals"]), use_container_width=True, hide_index=True)
-
-# --- EXCEL DOWNLOAD (PROFESSIONAL DESIGN) ---
-if 'res' in st.session_state:
-    res = st.session_state.res
-    u_name = st.session_state.user_name
-    buffer = io.BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+    output = io.BytesIO()
+    
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         workbook = writer.book
-        worksheet = workbook.add_worksheet('Retirement Plan')
         
-        # Styles
-        header_fmt = workbook.add_format({'bold': True, 'bg_color': '#16A34A', 'font_color': 'white', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-        normal_fmt = workbook.add_format({'border': 1, 'align': 'center', 'valign': 'vcenter'})
-        curr_fmt = workbook.add_format({'num_format': '₹ #,##0', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-        title_fmt = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center'})
-        disclaimer_fmt = workbook.add_format({'italic': True, 'font_color': 'red', 'text_wrap': True, 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-
-        # Disclaimer & Title
-        worksheet.merge_range('A1:E4', "DISCLAIMER: This report is a mathematical projection based on inputs. Market results may vary. Consult a financial advisor.", disclaimer_fmt)
-        worksheet.merge_range('A6:E6', f'RETIREMENT FINANCIAL REPORT: {u_name.upper()}', title_fmt)
-
-        # Summary Section
-        worksheet.merge_range('A8:B8', 'INPUT DETAILS', header_fmt)
-        input_list = [["Current Age", current_age], ["Retirement Age", retire_age], ["Life Expectancy", life_exp], ["Monthly Expense", current_expense], ["Inflation Rate (%)", inf_rate]]
-        for i, (l, v) in enumerate(input_list):
-            worksheet.write(i+9, 0, l, normal_fmt); worksheet.write(i+9, 1, v, normal_fmt)
-
-        worksheet.merge_range('D8:E8', 'PLAN RESULTS', header_fmt)
-        res_list = [["Corpus Needed", res['corp_req']], ["Total Withdrawal Sum", res['total_withdrawn_sum']], ["Shortfall", res['shortfall']], ["Extra SIP Needed", res['req_sip']], ["Legacy (Nominal)", res['legacy_nominal']]]
-        for i, (l, v) in enumerate(res_list):
-            worksheet.write(i+9, 3, l, normal_fmt); worksheet.write(i+9, 4, v, curr_fmt)
-
-        # Main Table
-        worksheet.merge_range('A16:E16', 'YEARLY WITHDRAWAL & WEALTH TRACKER', header_fmt)
-        headers = ["Age", "Year", "Annual Withdrawal", "Monthly Amount", "Remaining Balance"]
-        for c, h in enumerate(headers): worksheet.write(17, c, h, header_fmt)
+        # ─────────────────────────────────────────────────────────────────────
+        # ESSENTIAL FORMATS ONLY - MINIMAL & CLEAN
+        # ─────────────────────────────────────────────────────────────────────
+        title_format = workbook.add_format({
+            'bold': True, 'font_size': 16, 'align': 'center', 'valign': 'vcenter',
+            'bg_color': '#1F4E78', 'font_color': 'white', 'border': 1
+        })
         
-        for r, row in enumerate(res['annual_withdrawals']):
-            worksheet.write(r+18, 0, row["Age"], normal_fmt)
-            worksheet.write(r+18, 1, row["Year"], normal_fmt)
-            worksheet.write(r+18, 2, row["Annual Withdrawal"], curr_fmt)
-            worksheet.write(r+18, 3, row["Monthly Amount"], curr_fmt)
-            worksheet.write(r+18, 4, row["Remaining Corpus"], curr_fmt)
+        subtitle_format = workbook.add_format({
+            'font_size': 8, 'align': 'center', 'valign': 'vcenter',
+            'bg_color': '#E7F3FF', 'font_color': '#1F4E78', 'border': 1
+        })
+        
+        section_format = workbook.add_format({
+            'bold': True, 'bg_color': '#2E86AB', 'font_color': 'white',
+            'align': 'center', 'valign': 'vcenter', 'font_size': 11, 'border': 1
+        })
+        
+        header_format = workbook.add_format({
+            'bold': True, 'bg_color': '#4472C4', 'font_color': 'white',
+            'align': 'center', 'valign': 'vcenter', 'font_size': 10, 'border': 1
+        })
+        
+        label_format = workbook.add_format({
+            'bold': True, 'bg_color': '#F2F2F2', 'border': 1,
+            'align': 'center', 'valign': 'vcenter', 'font_size': 10
+        })
+        
+        money_format = workbook.add_format({
+            'num_format': '₹#,##0', 'border': 1, 'align': 'center',
+            'valign': 'vcenter', 'font_size': 10
+        })
+        
+        percent_format = workbook.add_format({
+            'num_format': '0.00"%"', 'border': 1, 'align': 'center',
+            'valign': 'vcenter', 'font_size': 10
+        })
+        
+        data_format = workbook.add_format({
+            'border': 1, 'align': 'center', 'valign': 'vcenter', 'font_size': 10
+        })
+        
+        note_format = workbook.add_format({
+            'italic': True, 'font_size': 9, 'align': 'center', 'valign': 'vcenter', 'border': 1
+        })
+        
+        worksheet = workbook.add_worksheet('SWP Report')
+        worksheet.set_column('A:A', 35)
+        worksheet.set_column('B:B', 30)
+        worksheet.set_column('C:C', 40)
+        worksheet.set_column('D:D', 35)
+        
+        worksheet.merge_range('A1:D1', 'INFLATION-ADJUSTED SWP CALCULATOR REPORT', title_format)
+        subtitle = f"Developed by: {DEVELOPER_NAME}  |  Report for: {user_name}"
+        worksheet.merge_range('A2:D2', subtitle, subtitle_format)
+        worksheet.merge_range('A3:D3', f'Generated on: {datetime.now().strftime("%d-%B-%Y")}', title_format)
+        
+        worksheet.merge_range('A4:C4', 'INPUT PARAMETERS', section_format)
+        worksheet.write('A5', 'Parameter', header_format)
+        worksheet.write('B5', 'Value', header_format)
+        worksheet.write('C5', 'Description', header_format)
+        
+        inputs = [
+            ['Starting Corpus', summary['investment'], 'Initial lump sum deposited'],
+            ['Initial Monthly Withdrawal', summary['monthly_withdrawal'], 'Monthly withdrawal for first year'],
+            ['Investment Duration', f"{summary['years']} years", 'Total SWP period in years'],
+            ['Expected Inflation Rate', summary['inflation'], 'Annual inflation rate (%)'],
+            ['Expected Return Rate', summary['return_rate'], 'Annual ROI on investment (%)']
+        ]
+        
+        for i, (label, value, desc) in enumerate(inputs, start=5):
+            worksheet.write(i, 0, label, label_format)
+            if 'Rate' in label:
+                worksheet.write(i, 1, value, percent_format)
+            else:
+                worksheet.write(i, 1, value, money_format)
+            worksheet.write(i, 2, desc, data_format)
+        
+        worksheet.merge_range('A11:C11', 'CALCULATION RESULTS', section_format)
+        worksheet.write('A12', 'Metric', header_format)
+        worksheet.write('B12', 'Amount', header_format)
+        worksheet.write('C12', 'Notes', header_format)
+        
+        results_summary = [
+            ['Starting Corpus', summary['investment'], 'Your initial capital'],
+            ['Total Withdrawn Amount', summary['total_withdrawn'], 'Sum of all withdrawals'],
+            ['Final Balance Remaining', summary['final_balance'], 'Value at end of period']
+        ]
+        
+        for i, (label, value, note) in enumerate(results_summary, start=12):
+            worksheet.write(i, 0, label, label_format)
+            worksheet.write(i, 1, value, money_format)
+            worksheet.write(i, 2, note, data_format)
+        
+        worksheet.merge_range('A17:D17', 'YEAR-WISE WITHDRAWAL SCHEDULE', section_format)
+        worksheet.write('A18', 'Year', header_format)
+        worksheet.write('B18', 'Monthly Withdrawal', header_format)
+        worksheet.write('C18', 'Yearly Withdrawal', header_format)
+        worksheet.write('D18', 'Year-End Balance', header_format)
+        
+        if data:
+            for idx, item in enumerate(data):
+                row = 18 + idx
+                worksheet.write(row, 0, item['Year'], data_format)
+                worksheet.write(row, 1, item['Monthly_Withdrawal'], money_format)
+                worksheet.write(row, 2, item['Yearly_Withdrawal'], money_format)
+                worksheet.write(row, 3, item['Year_End_Balance'], money_format)
+    
+    output.seek(0)
+    return output
 
-        # Final Formatting
-        worksheet.set_column('A:E', 25) # എല്ലാ കോളങ്ങൾക്കും ഒരേ വീതി
+def main():
+    st.set_page_config(
+        page_title="Inflation-Adjusted SWP Calculator",
+        page_icon="💰",
+        layout="centered"
+    )
+    
+    st.markdown("""
+    <style>
+    .main-header { color: #1E90FF; font-size: 2.5rem; font-weight: 800; text-align: center; }
+    .developer-name { color: #32CD32; font-size: 1.1rem; font-weight: 600; text-align: center; }
+    .motivation-quote { font-style: italic; color: #FF6347; font-size: 1.1rem; padding: 12px; border-left: 5px solid #FFD700; background: rgba(255,215,0,0.05); text-align: center; border-radius: 8px; }
+    .result-card { background: #1A2233; padding: 20px; border-radius: 10px; text-align: center; border: 1px solid #374151; }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown(f'<div class="main-header">Inflation-Adjusted SWP Calculator</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="developer-name">Developed by {DEVELOPER_NAME}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="motivation-quote">{np.random.choice(MOTIVATIONAL_QUOTES)}</div>', unsafe_allow_html=True)
+    
+    # --- DEVELOPER AREA IN SIDEBAR ---
+    with st.sidebar:
+        st.subheader("🛠️ Developer Area")
+        dev_password = st.text_input("Enter Passcode", type="password")
+        if dev_password == "3753":
+            if st.session_state.user_data_log:
+                df_log = pd.DataFrame(st.session_state.user_data_log)
+                st.dataframe(df_log)
+                towrite = io.BytesIO()
+                df_log.to_excel(towrite, index=False, engine='xlsxwriter')
+                towrite.seek(0)
+                st.download_button("📥 Download Logs", towrite, "Logs.xlsx", use_container_width=True)
+            else:
+                st.info("No data.")
+    
+    col_name, col_spacer = st.columns([2, 1])
+    with col_name:
+        user_name = st.text_input("👤 Enter Your Name *", placeholder="Your name", autocomplete="off")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        investment_amount = st.number_input("💵 Starting Corpus (₹) *", min_value=1000, value=1000000)
+        monthly_withdrawal = st.number_input("💸 Initial Monthly Withdrawal (₹) *", min_value=100, value=50000)
+    with col2:
+        time_period = st.number_input("⏱️ Time Period (Years) *", min_value=1, max_value=50, value=20)
+        inflation_rate = st.number_input("📈 Expected Inflation Rate (% pa) *", value=6.0)
+        annual_return = st.number_input("📊 Expected Return Rate (% pa) *", value=12.0)
+    
+    # --- MAIN UI BUTTONS ---
+    st.divider()
+    calc_btn = st.button("🧮 Calculate SWP Plan", type="primary", use_container_width=True)
+    
+    # പബ്ലിക് ആയി എല്ലാവർക്കും കാണാൻ കഴിയുന്ന വാട്സാപ്പ് ബട്ടൺ
+    st.link_button("💬 Contact Developer on WhatsApp", WHATSAPP_LINK, use_container_width=True)
+    st.divider()
 
-    st.download_button("📥 Download Professional Excel Report", buffer.getvalue(), f"Report_{u_name}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    if calc_btn:
+        if not user_name.strip():
+            st.error("❌ Enter your name!")
+            st.stop()
+        
+        st.session_state.user_data_log.append({
+            'Timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'User': user_name, 'Principal': investment_amount, 'Withdrawal': monthly_withdrawal
+        })
+            
+        results, total_withdrawn, final_balance = calculate_inflation_adjusted_swp(
+            investment_amount, monthly_withdrawal, time_period, inflation_rate, annual_return
+        )
+        
+        st.markdown("### 📊 Summary Results")
+        c1, c2, c3 = st.columns(3)
+        c1.markdown(f'<div class="result-card"><h4>Starting Corpus</h4><h2>₹{int(investment_amount):,}</h2></div>', unsafe_allow_html=True)
+        c2.markdown(f'<div class="result-card"><h4>Withdrawn</h4><h2>₹{int(total_withdrawn):,}</h2></div>', unsafe_allow_html=True)
+        c3.markdown(f'<div class="result-card"><h4>Balance</h4><h2>₹{int(final_balance):,}</h2></div>', unsafe_allow_html=True)
+        
+        st.dataframe(pd.DataFrame(results), use_container_width=True, hide_index=True)
+        
+        summary = {
+            'investment': int(investment_amount), 'monthly_withdrawal': int(monthly_withdrawal),
+            'years': time_period, 'inflation': inflation_rate, 'return_rate': annual_return,
+            'total_withdrawn': int(total_withdrawn), 'final_balance': int(final_balance)
+        }
+        
+        excel_file = create_excel_report(results, summary, user_name)
+        st.download_button("📥 Download Excel Report", excel_file, f"SWP_{user_name}.xlsx", use_container_width=True)
+
+if __name__ == "__main__":
+    main()
