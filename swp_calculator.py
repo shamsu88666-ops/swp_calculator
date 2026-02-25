@@ -47,26 +47,52 @@ def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, infla
         total_withdrawn += yearly_withdrawal_total
         results.append({
             'Year': year,
-            'Monthly_Withdrawal': round(current_monthly_withdrawal, 0),
-            'Yearly_Withdrawal': round(yearly_withdrawal_total, 0),
-            'Year_End_Balance': round(max(current_balance, 0), 0)
+            'Monthly Withdrawal (₹)': round(current_monthly_withdrawal, 0),
+            'Total Yearly Withdrawal (₹)': round(yearly_withdrawal_total, 0),
+            'Year End Balance (₹)': round(max(current_balance, 0), 0)
         })
         if current_balance <= 0: break
     
     return results, total_withdrawn, max(current_balance, 0)
 
-# എക്സൽ റിപ്പോർട്ട് ജനറേറ്റർ ഫംഗ്‌ഷൻ
+# ഹൈ-ക്വാളിറ്റി ഡിസൈനോട് കൂടിയ എക്സൽ ജനറേറ്റർ
 def create_excel_report(results_data, inputs_summary):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        # ഷീറ്റ് 1: Yearly Breakdown
+        workbook = writer.book
+        
+        # ഡിസൈൻ ഫോർമാറ്റുകൾ
+        header_format = workbook.add_format({
+            'bold': True,
+            'text_wrap': True,
+            'valign': 'vcenter',
+            'fg_color': '#1E90FF',
+            'font_color': 'white',
+            'border': 1
+        })
+        
+        data_format = workbook.add_format({'border': 1})
+        num_format = workbook.add_format({'num_format': '#,##0', 'border': 1})
+
+        # ഷീറ്റ് 1: SWP Results
         df_results = pd.DataFrame(results_data)
         df_results.to_excel(writer, index=False, sheet_name='SWP Plan Results')
+        worksheet1 = writer.sheets['SWP Plan Results']
         
-        # ഷീറ്റ് 2: Inputs and Summary
-        df_inputs = pd.DataFrame([inputs_summary])
+        # കോളം വിഡ്ത്ത് ക്രമീകരിക്കുന്നു
+        for col_num, value in enumerate(df_results.columns.values):
+            worksheet1.write(0, col_num, value, header_format)
+            worksheet1.set_column(col_num, col_num, 25)
+
+        # ഷീറ്റ് 2: Input Summary
+        df_inputs = pd.DataFrame(list(inputs_summary.items()), columns=['Parameters', 'Values'])
         df_inputs.to_excel(writer, index=False, sheet_name='Input Summary')
-    
+        worksheet2 = writer.sheets['Input Summary']
+        
+        for col_num, value in enumerate(df_inputs.columns.values):
+            worksheet2.write(0, col_num, value, header_format)
+            worksheet2.set_column(col_num, col_num, 30)
+
     output.seek(0)
     return output
 
@@ -76,7 +102,6 @@ def main():
     st.markdown(f"<h1 style='text-align: center; color: #1E90FF;'>SWP Calculator</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center;'>Developed by <b>{DEVELOPER_NAME}</b></p>", unsafe_allow_html=True)
 
-    # Sidebar Admin Access
     with st.sidebar:
         st.subheader("🛠️ Admin Access")
         dev_password = st.text_input("Enter Passcode", type="password")
@@ -107,7 +132,6 @@ def main():
 
         results, total_w, final_b = calculate_inflation_adjusted_swp(investment, monthly_out, years, inf_rate, ret_rate)
         
-        # ഫലങ്ങൾ കാണിക്കുന്നു
         st.divider()
         res_col1, res_col2, res_col3 = st.columns(3)
         res_col1.metric("Total Withdrawn", f"₹{int(total_w):,}")
@@ -116,31 +140,29 @@ def main():
         
         st.dataframe(pd.DataFrame(results), use_container_width=True)
 
-        # എക്സൽ ഫയലിനുള്ള ഡാറ്റ
+        # എക്സലിനായി ഡാറ്റ തയ്യാറാക്കുന്നു
         inputs_summary = {
             "User Name": user_name,
-            "Investment Corpus": investment,
-            "Initial Monthly Withdrawal": monthly_out,
-            "Plan Duration (Years)": years,
-            "Inflation Rate (%)": inf_rate,
-            "Return Rate (%)": ret_rate,
-            "Total Amount Received": round(total_w, 2),
-            "Final Closing Balance": round(final_b, 2),
-            "Calculation Date": datetime.now().strftime("%d-%m-%Y %H:%M")
+            "Investment Corpus": f"₹ {investment:,}",
+            "Initial Monthly Withdrawal": f"₹ {monthly_out:,}",
+            "Plan Duration": f"{years} Years",
+            "Inflation Rate": f"{inf_rate}%",
+            "Expected Return Rate": f"{ret_rate}%",
+            "Total Amount Received": f"₹ {int(total_w):,}",
+            "Final Closing Balance": f"₹ {int(final_b):,}",
+            "Report Generated On": datetime.now().strftime("%d-%m-%Y %H:%M")
         }
         
         excel_data = create_excel_report(results, inputs_summary)
 
-        # ഡൗൺലോഡ് ബട്ടൺ
         st.download_button(
-            label="📥 Download Full Report as Excel",
+            label="📥 Download High-Quality Excel Report",
             data=excel_data,
             file_name=f"SWP_Report_{user_name}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
         
-        # Admin Log entry
         st.session_state.user_data_log.append({
             'Time': datetime.now().strftime("%H:%M:%S"),
             'User': user_name, 
