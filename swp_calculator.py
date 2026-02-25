@@ -8,7 +8,6 @@ from datetime import datetime
 # DEVELOPER CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 DEVELOPER_NAME = "SHAMSUDEEN ABDULLA"
-# നിങ്ങളുടെ യഥാർത്ഥ ഫോൺ നമ്പർ ഇവിടെ നൽകുക (e.g., "919876543210")
 WHATSAPP_LINK = "https://wa.me/91XXXXXXXXXX" 
 
 # ഹോസ്പിറ്റൽ ഇൻഡെക്സ് കോഡ് - 100% മാറ്റമില്ലാതെ നിലനിർത്തുന്നു
@@ -18,14 +17,7 @@ HOSPITAL_INDEX_CODE = "HIC-2026-STABLE"
 if 'user_data_log' not in st.session_state:
     st.session_state.user_data_log = []
 
-MOTIVATIONAL_QUOTES = [
-    "Invest in your future today, for tomorrow's prosperity begins with today's wise decisions.",
-    "Financial freedom is not a dream; it's a goal achievable through planning and perseverance.",
-    "Every rupee invested wisely today is a seed for tomorrow's financial garden."
-]
-
 def calculate_effective_monthly_rate(annual_rate: float) -> float:
-    """Calculate effective monthly rate with validation"""
     if not 0 <= annual_rate <= 100:
         return 0.0
     return (1 + annual_rate/100) ** (1/12) - 1
@@ -63,12 +55,26 @@ def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, infla
     
     return results, total_withdrawn, max(current_balance, 0)
 
-# Excel Report Generator (മാറ്റമില്ലാതെ തുടരുന്നു)
-def create_excel_report(data, summary, user_name):
+# --- പുതുക്കിയ എക്സൽ റിപ്പോർട്ട് ജനറേറ്റർ ---
+def create_excel_report(user_inputs, detailed_results, summary_data):
     output = io.BytesIO()
+    # xlsxwriter എൻജിൻ ഉപയോഗിക്കുന്നു
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df = pd.DataFrame(data)
-        df.to_excel(writer, index=False, sheet_name='SWP Report')
+        # ഷീറ്റ് 1: ഇൻപുട്ട് വിവരങ്ങൾ (Input Summary)
+        input_df = pd.DataFrame(list(user_inputs.items()), columns=['Parameter', 'Value'])
+        input_df.to_excel(writer, index=False, sheet_name='Inputs & Summary')
+        
+        # ഷീറ്റ് 2: വിശദമായ റിപ്പോർട്ട് (Detailed Results)
+        results_df = pd.DataFrame(detailed_results)
+        results_df.to_excel(writer, index=False, sheet_name='Yearly Breakdown')
+        
+        # വർക്ക് ബുക്ക് ഫോർമാറ്റിംഗ് (Optional)
+        workbook = writer.book
+        worksheet1 = writer.sheets['Inputs & Summary']
+        header_format = workbook.add_format({'bold': True, 'bg_color': '#D7E4BC', 'border': 1})
+        for col_num, value in enumerate(input_df.columns.values):
+            worksheet1.write(0, col_num, value, header_format)
+            
     output.seek(0)
     return output
 
@@ -78,11 +84,10 @@ def main():
     st.markdown(f"<h1 style='text-align: center; color: #1E90FF;'>SWP Calculator</h1>", unsafe_allow_html=True)
     st.markdown(f"<p style='text-align: center;'>Developed by <b>{DEVELOPER_NAME}</b></p>", unsafe_allow_html=True)
 
-    # Sidebar Security
+    # Sidebar Admin Access
     with st.sidebar:
         st.subheader("🛠️ Admin Access")
         dev_password = st.text_input("Enter Passcode", type="password")
-        # st.secrets ഉപയോഗിക്കുന്നത് ശുപാർശ ചെയ്യുന്നു. തൽക്കാലം സുരക്ഷയ്ക്കായി ഇവിടെ മാറ്റം വരുത്തി.
         admin_pass = st.secrets.get("DEV_PASS", "3753") 
         
         if dev_password == admin_pass:
@@ -110,7 +115,7 @@ def main():
 
         results, total_w, final_b = calculate_inflation_adjusted_swp(investment, monthly_out, years, inf_rate, ret_rate)
         
-        # Summary Display
+        # ഡിസ്പ്ലേ സമ്മറി
         st.divider()
         res_col1, res_col2, res_col3 = st.columns(3)
         res_col1.metric("Total Withdrawn", f"₹{int(total_w):,}")
@@ -119,6 +124,29 @@ def main():
         
         st.dataframe(pd.DataFrame(results), use_container_width=True)
         
+        # എക്സൽ ഡൗൺലോഡ് ബട്ടൺ തയ്യാറാക്കുന്നു
+        user_inputs = {
+            "User Name": user_name,
+            "Initial Investment": investment,
+            "Starting Monthly Withdrawal": monthly_out,
+            "Years": years,
+            "Expected Inflation (%)": inf_rate,
+            "Expected Return (%)": ret_rate,
+            "Total Amount Withdrawn": total_w,
+            "Remaining Balance": final_b,
+            "Calculation Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
+        excel_data = create_excel_report(user_inputs, results, {})
+        
+        st.download_button(
+            label="📥 Download Excel Report",
+            data=excel_data,
+            file_name=f"SWP_Report_{user_name}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
         # Log entry
         st.session_state.user_data_log.append({
             'Time': datetime.now().strftime("%H:%M:%S"),
