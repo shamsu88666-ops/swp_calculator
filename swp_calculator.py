@@ -8,7 +8,7 @@ from datetime import datetime
 # DEVELOPER CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 DEVELOPER_NAME = "SHAMSUDEEN ABDULLA"
-WHATSAPP_LINK = "https://wa.me/91XXXXXXXXXX" 
+WHATSAPP_LINK = "https://wa.me/971506404705" 
 
 # ഹോസ്പിറ്റൽ ഇൻഡെക്സ് കോഡ് - 100% മാറ്റമില്ലാതെ നിലനിർത്തുന്നു
 HOSPITAL_INDEX_CODE = "HIC-2026-STABLE" 
@@ -55,26 +55,18 @@ def calculate_inflation_adjusted_swp(principal, monthly_withdrawal, years, infla
     
     return results, total_withdrawn, max(current_balance, 0)
 
-# --- പുതുക്കിയ എക്സൽ റിപ്പോർട്ട് ജനറേറ്റർ ---
-def create_excel_report(user_inputs, detailed_results, summary_data):
+# എക്സൽ റിപ്പോർട്ട് ജനറേറ്റർ ഫംഗ്‌ഷൻ
+def create_excel_report(results_data, inputs_summary):
     output = io.BytesIO()
-    # xlsxwriter എൻജിൻ ഉപയോഗിക്കുന്നു
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        # ഷീറ്റ് 1: ഇൻപുട്ട് വിവരങ്ങൾ (Input Summary)
-        input_df = pd.DataFrame(list(user_inputs.items()), columns=['Parameter', 'Value'])
-        input_df.to_excel(writer, index=False, sheet_name='Inputs & Summary')
+        # ഷീറ്റ് 1: Yearly Breakdown
+        df_results = pd.DataFrame(results_data)
+        df_results.to_excel(writer, index=False, sheet_name='SWP Plan Results')
         
-        # ഷീറ്റ് 2: വിശദമായ റിപ്പോർട്ട് (Detailed Results)
-        results_df = pd.DataFrame(detailed_results)
-        results_df.to_excel(writer, index=False, sheet_name='Yearly Breakdown')
-        
-        # വർക്ക് ബുക്ക് ഫോർമാറ്റിംഗ് (Optional)
-        workbook = writer.book
-        worksheet1 = writer.sheets['Inputs & Summary']
-        header_format = workbook.add_format({'bold': True, 'bg_color': '#D7E4BC', 'border': 1})
-        for col_num, value in enumerate(input_df.columns.values):
-            worksheet1.write(0, col_num, value, header_format)
-            
+        # ഷീറ്റ് 2: Inputs and Summary
+        df_inputs = pd.DataFrame([inputs_summary])
+        df_inputs.to_excel(writer, index=False, sheet_name='Input Summary')
+    
     output.seek(0)
     return output
 
@@ -115,7 +107,7 @@ def main():
 
         results, total_w, final_b = calculate_inflation_adjusted_swp(investment, monthly_out, years, inf_rate, ret_rate)
         
-        # ഡിസ്പ്ലേ സമ്മറി
+        # ഫലങ്ങൾ കാണിക്കുന്നു
         st.divider()
         res_col1, res_col2, res_col3 = st.columns(3)
         res_col1.metric("Total Withdrawn", f"₹{int(total_w):,}")
@@ -123,34 +115,36 @@ def main():
         res_col3.metric("Duration", f"{len(results)} Years")
         
         st.dataframe(pd.DataFrame(results), use_container_width=True)
-        
-        # എക്സൽ ഡൗൺലോഡ് ബട്ടൺ തയ്യാറാക്കുന്നു
-        user_inputs = {
+
+        # എക്സൽ ഫയലിനുള്ള ഡാറ്റ
+        inputs_summary = {
             "User Name": user_name,
-            "Initial Investment": investment,
-            "Starting Monthly Withdrawal": monthly_out,
-            "Years": years,
-            "Expected Inflation (%)": inf_rate,
-            "Expected Return (%)": ret_rate,
-            "Total Amount Withdrawn": total_w,
-            "Remaining Balance": final_b,
-            "Calculation Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "Investment Corpus": investment,
+            "Initial Monthly Withdrawal": monthly_out,
+            "Plan Duration (Years)": years,
+            "Inflation Rate (%)": inf_rate,
+            "Return Rate (%)": ret_rate,
+            "Total Amount Received": round(total_w, 2),
+            "Final Closing Balance": round(final_b, 2),
+            "Calculation Date": datetime.now().strftime("%d-%m-%Y %H:%M")
         }
         
-        excel_data = create_excel_report(user_inputs, results, {})
-        
+        excel_data = create_excel_report(results, inputs_summary)
+
+        # ഡൗൺലോഡ് ബട്ടൺ
         st.download_button(
-            label="📥 Download Excel Report",
+            label="📥 Download Full Report as Excel",
             data=excel_data,
             file_name=f"SWP_Report_{user_name}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-
-        # Log entry
+        
+        # Admin Log entry
         st.session_state.user_data_log.append({
             'Time': datetime.now().strftime("%H:%M:%S"),
-            'User': user_name, 'Principal': investment
+            'User': user_name, 
+            'Principal': investment
         })
 
     st.link_button("💬 WhatsApp Support", WHATSAPP_LINK, use_container_width=True)
